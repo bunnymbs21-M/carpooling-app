@@ -1,0 +1,71 @@
+{% extends "base.html" %} {% block title %}Offer a Ride - Unihop{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="form-container">
+    <h2>Offer a Ride</h2>
+    <form method="POST" action="{{ url_for('offer_ride') }}">
+      <div class="form-group">
+        <label for="origin">Starting Point</label>
+        <select id="origin" name="origin" required>
+          <option value="" disabled selected>Select Pickup Location</option>
+          <option value="SPSU Campus">SPSU Campus (Main Gate)</option>
+          <option value="Udaipur City">Udaipur City (Bus Stand/Station)</option>
+          <option value="Chetak Circle">Chetak Circle</option>
+          <option value="Airport">Maharana Pratap Airport</option>
+          <option value="Bhatewar">Bhatewar (Highway)</option>
+          <option value="Chittorgarh">Chittorgarh City</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="destination">Destination</label>
+        <select id="destination" name="destination" required>
+          <option value="" disabled selected>Select Drop-off Location</option>
+          <option value="SPSU Campus">SPSU Campus (Main Gate)</option>
+          <option value="Udaipur City">Udaipur City (Bus Stand/Station)</option>
+          <option value="Chetak Circle">Chetak Circle</option>
+          <option value="Airport">Maharana Pratap Airport</option>
+          <option value="Bhatewar">Bhatewar (Highway)</option>
+          <option value="Chittorgarh">Chittorgarh City</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="departure_time">Departure Date & Time</label>
+        <input
+          type="datetime-local"
+          id="departure_time"
+          name="departure_time"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="seats_available">Available Seats</label>
+        <input
+          type="number"
+          id="seats_available"
+          name="seats_available"
+          min="1"
+          max="6"
+          value="3"
+          required
+        />
+      </div>
+
+      <div class="info-box">
+        💡 <strong>Tip:</strong> Discuss the fare in the chat after they
+        request!
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">
+        Offer Ride
+      </button>
+    </form>
+
+    <p class="form-footer">
+      <a href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

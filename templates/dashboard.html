@@ -1,0 +1,114 @@
+{% extends "base.html" %} {% block title %}Dashboard - CarpoolHub{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="dashboard-header">
+    <h2>Available Rides</h2>
+    <a href="{{ url_for('offer_ride') }}" class="btn btn-primary"
+      >Offer a Ride</a
+    >
+  </div>
+
+  {% if rides %}
+  <div class="rides-grid">
+    {% for ride in rides %}
+    <div class="ride-card">
+      <div class="ride-header">
+        <h3>{{ ride.origin }} → {{ ride.destination }}</h3>
+      </div>
+      <div class="ride-details">
+        <p><strong>Driver:</strong> {{ ride.driver.name }}</p>
+        <p><strong>Phone:</strong> {{ ride.driver.phone }}</p>
+        <p>
+          <strong>Departure:</strong> {{ ride.departure_time.strftime('%d %b,
+          %I:%M %p') }}
+        </p>
+        <p><strong>Seats Available:</strong> {{ ride.seats_available }}</p>
+        <p class="price-note">💰 Discuss fare with driver</p>
+      </div>
+      <div class="ride-actions">
+        <button
+          class="btn btn-primary btn-small"
+          onclick="requestRide({{ ride.id }})"
+        >
+          Request Ride
+        </button>
+        <button
+          class="btn btn-secondary btn-small"
+          onclick="pingDriver({{ ride.id }})"
+        >
+          📍 Ping Driver
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No rides available at the moment. Be the first to offer one!</p>
+    <a href="{{ url_for('offer_ride') }}" class="btn btn-primary"
+      >Offer a Ride</a
+    >
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  // At the top of your script block
+  const socket = io();
+
+  // Listen for new rides from the server
+  socket.on("new_ride_notification", function (data) {
+    // Alert the user (or add a toast notification)
+    alert(`New Ride Available!\n${data.origin} ➝ ${data.destination}`);
+
+    // Refresh the page to show the new ride (Simplest way for now)
+    location.reload();
+  });
+  function requestRide(rideId) {
+    if (!confirm("Do you want to request this ride?")) {
+      return;
+    }
+
+    fetch(`/request-ride/${rideId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Ride requested successfully!");
+          location.reload();
+        } else {
+          alert(data.error || "Failed to request ride");
+        }
+      })
+      .catch((error) => {
+        alert("Error requesting ride");
+        console.error(error);
+      });
+  }
+
+  function pingDriver(rideId) {
+    fetch(`/ping-driver/${rideId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Driver has been pinged! 📍");
+        } else {
+          alert(data.error || "Failed to ping driver");
+        }
+      })
+      .catch((error) => {
+        alert("Error pinging driver");
+        console.error(error);
+      });
+  }
+</script>
+{% endblock %}

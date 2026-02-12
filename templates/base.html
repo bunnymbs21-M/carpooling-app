@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UniHop | Campus Rides</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container nav-container">
+        <a href="{{ url_for('index') }}" class="brand-logo">
+          <i class="fa-solid fa-rocket"></i> UniHop
+        </a>
+
+        <div class="nav-links">
+          {% if session.user_id %}
+          <a href="{{ url_for('dashboard') }}" class="nav-item"
+            ><i class="fa-solid fa-grid-2"></i> Dashboard</a
+          >
+          <a href="{{ url_for('offer_ride') }}" class="nav-item"
+            ><i class="fa-solid fa-plus-circle"></i> Offer Ride</a
+          >
+          <a href="{{ url_for('my_rides') }}" class="nav-item"
+            ><i class="fa-solid fa-car"></i> My Rides</a
+          >
+          <a href="{{ url_for('map_view') }}" class="nav-item"
+            ><i class="fa-solid fa-map"></i> Live Map</a
+          >
+          <a href="{{ url_for('profile') }}" class="nav-item"
+            ><i class="fa-solid fa-user"></i> Profile</a
+          >
+          <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
+          {% else %}
+          <a href="{{ url_for('login') }}" class="nav-item">Login</a>
+          <a href="{{ url_for('signup') }}" class="btn btn-primary">Sign Up</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %} {% endwith %}
+    </div>
+
+    <main class="container main-content">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+      <p>&copy; 2026 UniHop. Built for SPSU.</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+      const socket = io();
+    </script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

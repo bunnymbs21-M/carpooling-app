@@ -1,0 +1,163 @@
+{% extends "base.html" %} {% block content %}
+<div class="map-container">
+  <div class="map-header">
+    <h2><i class="fa-solid fa-map-location-dot"></i> Live Ride Map</h2>
+    <p>Click on any car to see its route to the destination.</p>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="map-legend">
+    <span class="badge badge-driver"
+      ><i class="fa-solid fa-car"></i> Active Driver</span
+    >
+    <span class="badge badge-route"
+      ><i class="fa-solid fa-route"></i> Route Line</span
+    >
+  </div>
+</div>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
+/>
+
+<style>
+  .map-container {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .map-header {
+    margin-bottom: 1rem;
+  }
+  .map-header h2 {
+    color: #4f46e5;
+  }
+
+  #map {
+    flex-grow: 1;
+    width: 100%;
+    border-radius: 8px;
+    border: 2px solid #f3f4f6;
+    z-index: 1;
+  }
+
+  .map-legend {
+    margin-top: 1rem;
+    display: flex;
+    gap: 10px;
+  }
+
+  .badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .badge-driver {
+    background: #e0e7ff;
+    color: #4338ca;
+  }
+  .badge-route {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  /* Hide the text instructions box because we just want the visual line */
+  .leaflet-routing-container {
+    display: none !important;
+  }
+</style>
+{% endblock %} {% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<script>
+  // Initialize Map
+  var map = L.map('map').setView([24.5854, 73.7125], 11);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Icons
+  var carIcon = L.icon({
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/3097/3097180.png',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+  });
+
+  // Coordinate Database (Approximate for Demo)
+  const locationMap = {
+      'Udaipur': [24.5854, 73.7125],
+      'Udaipur City': [24.5854, 73.7125],
+      'SPSU': [24.6190, 73.8580],
+      'SPSU Campus': [24.61576, 73.99188],
+      'Airport': [24.6178, 73.8962],
+      'Railway Station': [24.5713, 73.6974]
+  };
+
+  // Store the current route control so we can remove it later
+  var currentRouteControl = null;
+
+  // Rides from Flask
+  const rides = {{ rides|tojson }};
+
+  rides.forEach(ride => {
+      // 1. Get Start/End Coordinates
+      let startCoords = locationMap['Udaipur']; // Default
+      let endCoords = locationMap['SPSU'];      // Default
+
+      // Simple name matching
+      Object.keys(locationMap).forEach(key => {
+          if (ride.origin.toLowerCase().includes(key.toLowerCase())) startCoords = locationMap[key];
+          if (ride.destination.toLowerCase().includes(key.toLowerCase())) endCoords = locationMap[key];
+      });
+
+      // 2. Add Marker
+      const marker = L.marker(startCoords, {icon: carIcon}).addTo(map);
+
+      // 3. Add Click Event to Draw Route
+      marker.on('click', function() {
+          // Remove previous route if exists
+          if (currentRouteControl) {
+              map.removeControl(currentRouteControl);
+          }
+
+          // Create new route
+          currentRouteControl = L.Routing.control({
+              waypoints: [
+                  L.latLng(startCoords[0], startCoords[1]),
+                  L.latLng(endCoords[0], endCoords[1])
+              ],
+              lineOptions: {
+                  styles: [{color: '#6366f1', opacity: 0.8, weight: 6}] // Nice Indigo Line
+              },
+              createMarker: function() { return null; }, // Don't create extra markers
+              addWaypoints: false,
+              draggableWaypoints: false,
+              fitSelectedRoutes: true
+          }).addTo(map);
+
+          // Add a popup info
+          marker.bindPopup(`
+              <b>${ride.driver.name}</b><br>
+              Going to: ${ride.destination}
+          `).openPopup();
+      });
+  });
+</script>
+{% endblock %}

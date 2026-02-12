@@ -1,0 +1,205 @@
+/* 1. Base Variables & Reset */
+:root {
+    --primary: #4F46E5;       /* Modern Indigo */
+    --primary-hover: #4338CA;
+    --secondary: #10B981;     /* Success Green */
+    --danger: #EF4444;        /* Alert Red */
+    --dark: #1F2937;          /* Text Black */
+    --gray: #6B7280;          /* Text Gray */
+    --light: #F3F4F6;         /* Background */
+    --white: #FFFFFF;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --radius: 12px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--light);
+    color: var(--dark);
+    line-height: 1.6;
+}
+
+/* 2. Navigation - Clean & White */
+.navbar {
+    background: var(--white);
+    box-shadow: var(--shadow);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.brand-logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.nav-item {
+    text-decoration: none;
+    color: var(--gray);
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.nav-item:hover {
+    color: var(--primary);
+}
+
+/* 3. Buttons */
+.btn {
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+.btn-logout {
+    background-color: #FEE2E2;
+    color: var(--danger);
+}
+
+.btn-logout:hover {
+    background-color: #FECACA;
+}
+
+.btn-request {
+    width: 100%;
+    background-color: var(--dark);
+    color: var(--white);
+    margin-top: 10px;
+}
+
+/* 4. Cards & Layout */
+.main-content {
+    margin-top: 2rem;
+    min-height: 80vh;
+}
+
+.ride-card {
+    background: var(--white);
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
+    border: 1px solid #E5E7EB;
+    transition: transform 0.2s ease;
+}
+
+.ride-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.ride-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #F3F4F6;
+    padding-bottom: 0.5rem;
+}
+
+.ride-header h3 {
+    font-size: 1.25rem;
+    color: var(--dark);
+}
+
+.price {
+    background: #ECFDF5;
+    color: var(--secondary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.ride-details p {
+    color: var(--gray);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 5. Alerts & Forms */
+.alert {
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-top: 1rem;
+    font-weight: 500;
+}
+.alert-success { background: #D1FAE5; color: #065F46; }
+.alert-error { background: #FEE2E2; color: #991B1B; }
+
+form {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+input, select {
+    width: 100%;
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+input:focus {
+    outline: 2px solid var(--primary);
+    border-color: transparent;
+}
+
+footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--gray);
+    margin-top: 3rem;
+}
