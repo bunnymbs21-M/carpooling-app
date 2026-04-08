@@ -1,39 +1,62 @@
-{% extends "base.html" %} {% block title %}Profile - Unihop{% endblock %} {%
-block content %}
-<div class="container">
+{% extends "base.html" %}
+{% block title %}Profile - UniHop{% endblock %}
+{% block content %}
+<div class="page-wrapper">
   <div class="profile-container">
-    <div class="profile-header">
-      <div class="profile-avatar">{{ user.name[0].upper() }}</div>
-      <h2>{{ user.name }}</h2>
-    </div>
+    <div class="profile-card">
 
-    <div class="profile-details">
-      <div class="profile-item">
-        <strong>Email:</strong>
-        <span>{{ user.email }}</span>
-      </div>
+      <!-- Gradient Banner -->
+      <div class="profile-banner"></div>
 
-      <div class="profile-item">
-        <strong>Phone:</strong>
-        <span>{{ user.phone }}</span>
-      </div>
-
-      <div class="profile-item">
-        <strong>Member Since:</strong>
-        <span>{{ user.created_at.strftime('%B %Y') }}</span>
-      </div>
-
-      <div class="profile-stats">
-        <div class="stat-card">
-          <h3>{{ user.rides_offered|length }}</h3>
-          <p>Rides Offered</p>
+      <div class="profile-body">
+        <!-- Avatar + Name -->
+        <div class="profile-header">
+          <div class="profile-avatar">{{ user.name[0].upper() }}</div>
+          <div class="profile-name-group">
+            <h2>{{ user.name }}</h2>
+            <span class="profile-tagline">UniHop Member</span>
+          </div>
         </div>
-        <div class="stat-card">
-          <h3>{{ user.ride_requests|length }}</h3>
-          <p>Rides Requested</p>
+
+        <!-- Details -->
+        <div class="profile-details">
+          <div class="profile-item">
+            <div class="item-icon"><i class="fa-solid fa-envelope"></i></div>
+            <div>
+              <strong>Email</strong>
+              <span>{{ user.email }}</span>
+            </div>
+          </div>
+          <div class="profile-item">
+            <div class="item-icon"><i class="fa-solid fa-phone"></i></div>
+            <div>
+              <strong>Phone</strong>
+              <span>{{ user.phone }}</span>
+            </div>
+          </div>
+          <div class="profile-item">
+            <div class="item-icon"><i class="fa-solid fa-calendar-check"></i></div>
+            <div>
+              <strong>Member Since</strong>
+              <span>{{ user.created_at.strftime('%B %Y') }}</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+
+        <!-- Stats -->
+        <div class="profile-stats">
+          <div class="stat-card">
+            <h3>{{ user.rides_offered|length }}</h3>
+            <p>Rides Offered</p>
+          </div>
+          <div class="stat-card">
+            <h3>{{ user.ride_requests|length }}</h3>
+            <p>Rides Requested</p>
+          </div>
+        </div>
+      </div><!-- /.profile-body -->
+
+    </div><!-- /.profile-card -->
   </div>
 </div>
 {% endblock %}

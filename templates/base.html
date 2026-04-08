@@ -3,21 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>UniHop | Campus Rides</title>
-
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
-    />
+    <title>{% block title %}UniHop | Campus Rides{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', q=2) }}" />
   </head>
   <body>
     <nav class="navbar">
@@ -26,54 +15,293 @@
           <i class="fa-solid fa-rocket"></i> UniHop
         </a>
 
+        <div class="menu-toggle" id="mobile-menu">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </div>
+
         <div class="nav-links">
           {% if session.user_id %}
-          <a href="{{ url_for('dashboard') }}" class="nav-item"
-            ><i class="fa-solid fa-grid-2"></i> Dashboard</a
-          >
-          <a href="{{ url_for('offer_ride') }}" class="nav-item"
-            ><i class="fa-solid fa-plus-circle"></i> Offer Ride</a
-          >
-          <a href="{{ url_for('my_rides') }}" class="nav-item"
-            ><i class="fa-solid fa-car"></i> My Rides</a
-          >
-          <a href="{{ url_for('map_view') }}" class="nav-item"
-            ><i class="fa-solid fa-map"></i> Live Map</a
-          >
-          <a href="{{ url_for('profile') }}" class="nav-item"
-            ><i class="fa-solid fa-user"></i> Profile</a
-          >
-          <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
+            <a href="{{ url_for('dashboard') }}" class="nav-item"><i class="fa-solid fa-grid-2"></i> Dashboard</a>
+            <a href="{{ url_for('offer_ride') }}" class="nav-item"><i class="fa-solid fa-plus-circle"></i> Offer Ride</a>
+            <a href="{{ url_for('my_rides') }}" class="nav-item"><i class="fa-solid fa-car"></i> My Rides</a>
+            <a href="{{ url_for('map_view') }}" class="nav-item"><i class="fa-solid fa-map"></i> Live Map</a>
+            <a href="{{ url_for('profile') }}" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
           {% else %}
-          <a href="{{ url_for('login') }}" class="nav-item">Login</a>
-          <a href="{{ url_for('signup') }}" class="btn btn-primary">Sign Up</a>
+            <a href="{{ url_for('login') }}" class="nav-item">Login</a>
+            <a href="{{ url_for('signup') }}" class="btn btn-primary">Sign Up</a>
           {% endif %}
         </div>
       </div>
     </nav>
 
     <div class="container">
-      {% with messages = get_flashed_messages(with_categories=true) %} {% if
-      messages %}
-      <div class="flash-messages">
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      </div>
-      {% endif %} {% endwith %}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endwith %}
     </div>
 
-    <main class="container main-content">
+    <!-- ── Toast Notification Container ── -->
+    <div id="toast-container"></div>
+
+    <main class="main-content">
       {% block content %}{% endblock %}
     </main>
 
-    <footer>
-      <p>&copy; 2026 UniHop. Built for SPSU.</p>
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <span class="footer-brand"><i class="fa-solid fa-rocket"></i> UniHop</span>
+        <p>&copy; 2026 UniHop. Built for <strong>SPSU</strong>.</p>
+      </div>
     </footer>
+
+    <style>
+      /* ── Toast System ── */
+      #toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 360px;
+        width: 100%;
+      }
+
+      .toast {
+        background: rgba(15, 23, 42, 0.96);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 16px;
+        padding: 18px 20px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        animation: slideInRight 0.35s cubic-bezier(0.16,1,0.3,1) forwards;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .toast::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+      }
+      .toast-ping::before  { background: linear-gradient(to right, #f59e0b, #ef4444); }
+      .toast-accept::before { background: linear-gradient(to right, #10b981, #14b8a6); }
+      .toast-info::before   { background: linear-gradient(to right, #3b82f6, #6366f1); }
+
+      .toast-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #f1f5f9;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .toast-body {
+        font-size: 0.85rem;
+        color: rgba(255,255,255,0.6);
+        margin-bottom: 14px;
+        line-height: 1.4;
+      }
+
+      .toast-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .toast-btn {
+        flex: 1;
+        padding: 9px 14px;
+        border-radius: 10px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        font-family: 'Outfit', sans-serif;
+        transition: all 0.2s;
+        text-align: center;
+        text-decoration: none;
+      }
+
+      .toast-btn-accept {
+        background: linear-gradient(45deg, #10b981, #14b8a6);
+        color: white;
+        box-shadow: 0 0 14px rgba(16,185,129,0.35);
+      }
+      .toast-btn-accept:hover { transform: scale(1.03); box-shadow: 0 0 22px rgba(16,185,129,0.55); }
+
+      .toast-btn-dismiss {
+        background: rgba(255,255,255,0.08);
+        color: rgba(255,255,255,0.55);
+      }
+      .toast-btn-dismiss:hover { background: rgba(255,255,255,0.14); }
+
+      .toast-btn-chat {
+        background: linear-gradient(45deg, #6366f1, #3b82f6);
+        color: white;
+        box-shadow: 0 0 14px rgba(99,102,241,0.35);
+      }
+      .toast-btn-chat:hover { transform: scale(1.03); }
+
+      .toast-close {
+        position: absolute;
+        top: 10px; right: 12px;
+        background: none; border: none;
+        color: rgba(255,255,255,0.3);
+        font-size: 1rem; cursor: pointer;
+        line-height: 1; padding: 2px;
+      }
+      .toast-close:hover { color: rgba(255,255,255,0.7); }
+
+      @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(100%); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+
+      @keyframes fadeOut {
+        to { opacity: 0; transform: translateX(104%); height: 0; padding: 0; margin: 0; border: none; }
+      }
+
+      .toast-leaving {
+        animation: fadeOut 0.3s ease forwards;
+      }
+    </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
       const socket = io();
+
+      // Mobile Menu
+      document.querySelector('#mobile-menu').addEventListener('click', function() {
+        this.classList.toggle('is-active');
+        document.querySelector('.nav-links').classList.toggle('active');
+      });
+
+      // ── Toast helper ─────────────────────────────────────────────────────
+      function showToast({ type = 'info', title, body, actions = [], autoDismiss = 8000 }) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+
+        const actionsHtml = actions.map(a => {
+          if (a.href) {
+            return `<a href="${a.href}" class="toast-btn ${a.cls || 'toast-btn-chat'}">${a.label}</a>`;
+          }
+          return `<button class="toast-btn ${a.cls || 'toast-btn-dismiss'}" onclick="${a.fn}">${a.label}</button>`;
+        }).join('');
+
+        toast.innerHTML = `
+          <button class="toast-close" onclick="dismissToast(this.parentElement)">✕</button>
+          <div class="toast-title">${title}</div>
+          <div class="toast-body">${body}</div>
+          ${actionsHtml ? `<div class="toast-actions">${actionsHtml}</div>` : ''}
+        `;
+
+        container.appendChild(toast);
+
+        if (autoDismiss) {
+          setTimeout(() => dismissToast(toast), autoDismiss);
+        }
+        return toast;
+      }
+
+      function dismissToast(el) {
+        if (!el || el.classList.contains('toast-leaving')) return;
+        el.classList.add('toast-leaving');
+        el.addEventListener('animationend', () => el.remove());
+      }
+
+      // ── Join personal user room ─────────────────────────────────────────
+      {% if session.user_id %}
+      const CURRENT_USER_ID = {{ session.user_id }};
+      socket.emit('join_user_room', { user_id: CURRENT_USER_ID });
+
+      // ── Driver hears a passenger ping ────────────────────────────────────
+      socket.on('global_ping', function(data) {
+        showToast({
+          type: 'ping',
+          title: '🔔 Someone wants to join your ride!',
+          body: `<strong>${data.passenger_name}</strong> wants to hop on your ride to <strong>${data.destination}</strong>.`,
+          actions: [
+            {
+              label: '✅ Accept',
+              cls: 'toast-btn-accept',
+              fn: `acceptPing(${data.request_id}, this.parentElement.parentElement)`
+            },
+            {
+              label: 'Dismiss',
+              cls: 'toast-btn-dismiss',
+              fn: 'dismissToast(this.parentElement.parentElement)'
+            }
+          ],
+          autoDismiss: 30000
+        });
+      });
+
+      // ── Passenger hears their request was accepted ────────────────────────
+      socket.on('ride_accepted', function(data) {
+        showToast({
+          type: 'accept',
+          title: '🎉 You\'ve been accepted!',
+          body: `<strong>${data.driver_name}</strong> accepted your request for the ride to <strong>${data.destination}</strong>. You can now chat!`,
+          actions: [
+            {
+              label: '💬 Open Chat',
+              cls: 'toast-btn-chat',
+              href: `/chat/${data.ride_id}`
+            }
+          ],
+          autoDismiss: 0  // stay until clicked
+        });
+
+        // Also update the dashboard button if visible on this page
+        const btn = document.getElementById(`ping-btn-${data.ride_id}`);
+        if (btn) {
+          btn.outerHTML = `<a href="/chat/${data.ride_id}" class="btn btn-chat btn-small">
+            <i class="fa-solid fa-comments"></i> Open Chat
+          </a>`;
+        }
+      });
+
+      {% endif %}
+
+      // ── Accept a ping (called from toast button) ─────────────────────────
+      function acceptPing(requestId, toastEl) {
+        fetch(`/accept-ping/${requestId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+          dismissToast(toastEl);
+          if (data.success) {
+            showToast({
+              type: 'accept',
+              title: '✅ Request Accepted!',
+              body: 'The passenger has been notified. You can chat now.',
+              actions: [
+                { label: '💬 Open Chat', cls: 'toast-btn-chat', href: `/chat/${data.ride_id}` }
+              ],
+              autoDismiss: 0
+            });
+          } else {
+            alert(data.error || 'Failed to accept request');
+          }
+        })
+        .catch(() => alert('Error accepting request'));
+      }
     </script>
     {% block scripts %}{% endblock %}
   </body>

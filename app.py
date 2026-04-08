@@ -1,16 +1,6 @@
 import os
 from datetime import datetime
-
-from flask import (
-    Flask,
-    flash,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    session,
-    url_for,
-)
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 # Make sure your models.py file is in the same folder!
@@ -95,13 +85,34 @@ def dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # Get all available rides, sorted by newest first
+    current_user_id = session["user_id"]
+
+    # FILTER: Only show rides that are available AND in the future
     rides = (
-        Ride.query.filter_by(status="available")
-        .order_by(Ride.departure_time.desc())
+        Ride.query.filter(
+            Ride.status == "available",
+            Ride.departure_time > datetime.now()
+        )
+        .order_by(Ride.departure_time.asc())
         .all()
     )
-    return render_template("dashboard.html", rides=rides)
+
+    # Set of ride IDs where the current user is the DRIVER
+    my_ride_ids = {r.id for r in rides if r.driver_id == current_user_id}
+
+    # Dict of ride_id → request status for rides the user has REQUESTED
+    user_requests = {}
+    my_reqs = RideRequest.query.filter_by(passenger_id=current_user_id).all()
+    for req in my_reqs:
+        user_requests[req.ride_id] = req.status   # 'pending', 'accepted', 'rejected'
+
+    return render_template(
+        "dashboard.html",
+        rides=rides,
+        user_requests=user_requests,
+        my_ride_ids=my_ride_ids,
+        current_user_id=current_user_id,
+    )
 
 
 @app.route("/offer-ride", methods=["GET", "POST"])
@@ -220,28 +231,54 @@ def accept_request(request_id):
     db.session.commit()
 
     return jsonify({"success": "Request accepted"})
+@app.route("/reject-request/<int:request_id>", methods=["POST"])
+def reject_request(request_id):
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
 
+    ride_request = RideRequest.query.get_or_404(request_id)
+    ride = Ride.query.get(ride_request.ride_id)
+
+    # Security Check: Only the driver can reject
+    if ride.driver_id != session["user_id"]:
+        return jsonify({"error": "Not authorized"}), 403
+
+    # 1. Update status to 'rejected'
+    ride_request.status = "rejected"
+    
+    # 2. Send the "Sorry" message to the passenger automatically
+    rejection_msg = Message(
+        ride_id=ride.id,
+        sender_id=session["user_id"],
+        message=f"❌ Request Rejected: Sorry {ride_request.passenger.name}, I cannot take you on this ride."
+    )
+    db.session.add(rejection_msg)
+    db.session.commit()
+
+    return jsonify({"success": "Request rejected and user notified."})
 
 @app.route("/map")
 def map_view():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    rides_objects = Ride.query.filter_by(status="available").all()
+    # FILTER: Only map future rides
+    rides_objects = Ride.query.filter(
+        Ride.status == "available", 
+        Ride.departure_time > datetime.now()
+    ).all()
+    
     rides_data = []
     for ride in rides_objects:
-        rides_data.append(
-            {
-                "origin": ride.origin,
-                "destination": ride.destination,
-                "driver": {"name": ride.driver.name},
-                "departure_time": ride.departure_time.isoformat(),
-                "seats_available": ride.seats_available,
-            }
-        )
+        rides_data.append({
+            "origin": ride.origin,
+            "destination": ride.destination,
+            "driver": {"name": ride.driver.name},
+            "departure_time": ride.departure_time.isoformat(),
+            "seats_available": ride.seats_available,
+        })
 
     return render_template("map.html", rides=rides_data)
-
 
 # --- CHAT & REAL-TIME ROUTES ---
 
@@ -304,15 +341,34 @@ def ping_driver(ride_id):
     ride = Ride.query.get_or_404(ride_id)
     user = User.query.get(session["user_id"])
 
+    # Prevent driver from pinging their own ride
+    if ride.driver_id == session["user_id"]:
+        return jsonify({"error": "You cannot ping your own ride"}), 400
+
+    # Create a RideRequest if one doesn't exist yet
+    existing_req = RideRequest.query.filter_by(
+        ride_id=ride_id, passenger_id=session["user_id"]
+    ).first()
+    if not existing_req:
+        existing_req = RideRequest(
+            ride_id=ride_id,
+            passenger_id=session["user_id"],
+            status="pending",
+        )
+        db.session.add(existing_req)
+        db.session.commit()
+    request_id = existing_req.id
+
+    # Save ping to chat history
     ping_message = Message(
         ride_id=ride_id,
         sender_id=session["user_id"],
         message=f"🔔 {user.name} is pinging the driver! Please respond.",
     )
-
     db.session.add(ping_message)
     db.session.commit()
 
+    # Emit to the chat room (if driver is in it)
     socketio.emit(
         "new_message",
         {
@@ -326,10 +382,93 @@ def ping_driver(ride_id):
         room=f"ride_{ride_id}",
     )
 
-    return jsonify({"success": "Driver pinged successfully!"})
+    # Emit a targeted notification to the driver's personal room
+    socketio.emit(
+        "global_ping",
+        {
+            "driver_id": ride.driver_id,
+            "passenger_name": user.name,
+            "passenger_id": user.id,
+            "ride_id": ride_id,
+            "request_id": request_id,
+            "destination": ride.destination,
+            "message": f"🔔 {user.name} wants to join your ride to {ride.destination}!",
+        },
+        room=f"user_{ride.driver_id}",
+    )
 
+    return jsonify({"success": True, "request_id": request_id})
+
+
+@app.route("/accept-ping/<int:request_id>", methods=["POST"])
+def accept_ping(request_id):
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    req = RideRequest.query.get_or_404(request_id)
+    ride = Ride.query.get(req.ride_id)
+
+    # Only the driver of the ride can accept
+    if ride.driver_id != session["user_id"]:
+        return jsonify({"error": "Not authorized"}), 403
+
+    # Update request status
+    req.status = "accepted"
+    if ride.seats_available > 0:
+        ride.seats_available -= 1
+    if ride.seats_available == 0:
+        ride.status = "full"
+    db.session.commit()
+
+    passenger = User.query.get(req.passenger_id)
+    driver = User.query.get(session["user_id"])
+
+    # Add a system message to the chat
+    accept_msg = Message(
+        ride_id=ride.id,
+        sender_id=session["user_id"],
+        message=f"✅ {driver.name} accepted {passenger.name}'s request! You can now chat.",
+    )
+    db.session.add(accept_msg)
+    db.session.commit()
+
+    # Emit chat message to the room
+    socketio.emit(
+        "new_message",
+        {
+            "ride_id": ride.id,
+            "sender_name": driver.name,
+            "sender_id": driver.id,
+            "message": accept_msg.message,
+            "created_at": accept_msg.created_at.strftime("%I:%M %p"),
+        },
+        room=f"ride_{ride.id}",
+    )
+
+    # Notify the passenger in their personal room
+    socketio.emit(
+        "ride_accepted",
+        {
+            "passenger_id": req.passenger_id,
+            "ride_id": ride.id,
+            "driver_name": driver.name,
+            "origin": ride.origin,
+            "destination": ride.destination,
+        },
+        room=f"user_{req.passenger_id}",
+    )
+
+    return jsonify({"success": True, "ride_id": ride.id})
 
 # --- SOCKET.IO EVENTS ---
+
+@socketio.on("join_user_room")
+def handle_join_user_room(data):
+    """Each user joins a personal room so we can target events to them."""
+    user_id = data.get("user_id")
+    if user_id:
+        join_room(f"user_{user_id}")
+
 
 @socketio.on("join_ride")
 def handle_join_ride(data):
@@ -377,4 +516,4 @@ def handle_send_message(data):
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    socketio.run(app,host="0.0.0.0",port="5000", debug=True)

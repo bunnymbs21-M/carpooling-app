@@ -1,163 +1,406 @@
-{% extends "base.html" %} {% block content %}
-<div class="map-container">
-  <div class="map-header">
-    <h2><i class="fa-solid fa-map-location-dot"></i> Live Ride Map</h2>
-    <p>Click on any car to see its route to the destination.</p>
-  </div>
+{% extends "base.html" %}
+{% block title %}Live Ride Map - UniHop{% endblock %}
 
-  <div id="map"></div>
+{% block content %}
 
-  <div class="map-legend">
-    <span class="badge badge-driver"
-      ><i class="fa-solid fa-car"></i> Active Driver</span
-    >
-    <span class="badge badge-route"
-      ><i class="fa-solid fa-route"></i> Route Line</span
-    >
-  </div>
-</div>
-
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
-/>
+<!-- Load Leaflet CSS + Plugins -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
 <style>
-  .map-container {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    height: 80vh;
+  /* ---- Map Page Layout ---- */
+  .map-page {
     display: flex;
     flex-direction: column;
+    height: calc(100vh - 64px); /* full viewport minus navbar */
+    overflow: hidden;
   }
 
-  .map-header {
-    margin-bottom: 1rem;
-  }
-  .map-header h2 {
-    color: #4f46e5;
+  .map-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 24px;
+    background: rgba(11,17,33,0.9);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
   }
 
-  #map {
-    flex-grow: 1;
-    width: 100%;
-    border-radius: 8px;
-    border: 2px solid #f3f4f6;
-    z-index: 1;
+  .map-toolbar-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    background: linear-gradient(to right, #3b82f6, #14b8a6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   .map-legend {
-    margin-top: 1rem;
     display: flex;
-    gap: 10px;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
-  .badge {
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
+  .legend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .legend-driver {
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.4);
+    color: #10b981;
+  }
+  .legend-passenger {
+    background: rgba(236,72,153,0.15);
+    border: 1px solid rgba(236,72,153,0.4);
+    color: #ec4899;
+  }
+  .legend-route {
+    background: rgba(99,102,241,0.15);
+    border: 1px solid rgba(99,102,241,0.4);
+    color: #a5b4fc;
+  }
+
+  .map-hint {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.82rem;
+    font-style: italic;
+  }
+
+  /* ---- Map itself ---- */
+  #map {
+    flex: 1;
+    width: 100%;
+    min-height: 0; /* critical for flex child to scroll properly */
+  }
+
+  .popup-btn-action {
+    display: block; width: 100%; padding: 8px 0; text-align: center;
+    background: linear-gradient(45deg, #10b981, #14b8a6); color: white;
+    border-radius: 8px; font-size: 0.85rem; font-weight: 700;
+    border: none; cursor: pointer; margin-top: 6px;
+    transition: opacity 0.2s;
+  }
+  .popup-btn-action:hover { opacity: 0.85; }
+
+  /* ---- Hide routing instructions panel ---- */
+  .leaflet-routing-container { display: none !important; }
+
+  /* ---- Custom Popup Styles ---- */
+  .ride-popup {
+    font-family: 'Outfit', sans-serif;
+    min-width: 230px;
+  }
+  .popup-header {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
   }
-  .badge-driver {
-    background: #e0e7ff;
-    color: #4338ca;
+  .popup-type-badge {
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
   }
-  .badge-route {
-    background: #fee2e2;
-    color: #991b1b;
+  .popup-type-driver { background: #d1fae5; color: #065f46; }
+  .popup-type-passenger { background: #fce7f3; color: #9d174d; }
+  .popup-route {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+  }
+  .popup-detail { font-size: 0.88rem; color: #475569; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
+  .popup-detail strong { color: #1e293b; }
+  .popup-actions { margin-top: 12px; }
+  .popup-btn {
+    display: block; width: 100%; padding: 8px 0; text-align: center;
+    background: linear-gradient(45deg, #6366f1, #3b82f6); color: white;
+    border-radius: 8px; font-size: 0.85rem; font-weight: 700;
+    text-decoration: none; cursor: pointer; border: none;
+    transition: opacity 0.2s;
+  }
+  .popup-btn:hover { opacity: 0.85; }
+  .popup-btn-secondary {
+    display: block; width: 100%; padding: 8px 0; text-align: center;
+    background: #f1f5f9; color: #334155;
+    border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+    border: none; cursor: default; margin-top: 6px;
   }
 
-  /* Hide the text instructions box because we just want the visual line */
-  .leaflet-routing-container {
-    display: none !important;
+  /* ---- Empty state overlay ---- */
+  .map-empty {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(11,17,33,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 32px 40px;
+    text-align: center;
+    z-index: 999;
+    pointer-events: none;
   }
+  .map-empty .empty-icon { font-size: 3rem; margin-bottom: 10px; }
+  .map-empty p { color: rgba(255,255,255,0.6); font-size: 1rem; }
+
+  /* ---- Bottom stats bar ---- */
+  .map-statsbar {
+    display: flex; gap: 24px; padding: 10px 24px;
+    background: rgba(11,17,33,0.9);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .statsbar-item { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+  .statsbar-item strong { color: #14b8a6; }
+
+  /* ---- Custom DivIcon Markers ---- */
+  .map-marker {
+    width: 36px; height: 36px; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex; align-items: center; justify-content: center;
+    border: 3px solid white;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+  }
+  .map-marker-inner {
+    transform: rotate(45deg);
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .marker-driver { background: linear-gradient(135deg, #10b981, #14b8a6); }
+  .marker-passenger { background: linear-gradient(135deg, #ec4899, #a855f7); }
 </style>
-{% endblock %} {% block scripts %}
+
+<div class="map-page">
+  <!-- Toolbar -->
+  <div class="map-toolbar">
+    <div class="map-toolbar-title">
+      <i class="fa-solid fa-map-location-dot"></i> Live Ride Map
+    </div>
+    <div class="map-legend">
+      <span class="legend-pill legend-driver">🟢 Offering Ride</span>
+      <span class="legend-pill legend-passenger">🔴 Looking for Ride</span>
+      <span class="legend-pill legend-route">— Route Line</span>
+      <span class="map-hint">Click a pin for details &amp; route</span>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div id="map" style="position:relative;">
+    {% if not rides %}
+    <div class="map-empty">
+      <div class="empty-icon">🗺️</div>
+      <p>No active rides on the map right now.<br>Be the first to offer one!</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Stats bar -->
+  <div class="map-statsbar">
+    <div class="statsbar-item">Total Active Rides: <strong>{{ rides|length }}</strong></div>
+    <div class="statsbar-item">Area: <strong>Udaipur / SPSU Region</strong></div>
+    <div class="statsbar-item">Map: <strong>OpenStreetMap</strong></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
-  // Initialize Map
-  var map = L.map('map').setView([24.5854, 73.7125], 11);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  // Icons
-  var carIcon = L.icon({
-      iconUrl: 'https://cdn-icons-png.flaticon.com/512/3097/3097180.png',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-  });
-
-  // Coordinate Database (Approximate for Demo)
-  const locationMap = {
-      'Udaipur': [24.5854, 73.7125],
-      'Udaipur City': [24.5854, 73.7125],
-      'SPSU': [24.6190, 73.8580],
-      'SPSU Campus': [24.61576, 73.99188],
-      'Airport': [24.6178, 73.8962],
-      'Railway Station': [24.5713, 73.6974]
+  // ── Coordinate database ──────────────────────────────────────────────────
+  const locationCoords = {
+    'SPSU Campus':   [24.61576, 73.99188],
+    'SPSU':          [24.61576, 73.99188],
+    'Udaipur City':  [24.5854,  73.7125],
+    'Udaipur':       [24.5854,  73.7125],
+    'Chetak Circle': [24.5940,  73.6874],
+    'Airport':       [24.6178,  73.8962],
+    'Bhatewar':      [24.4891,  74.0034],
+    'Chittorgarh':   [24.8820,  74.6267],
   };
 
-  // Store the current route control so we can remove it later
-  var currentRouteControl = null;
+  function resolveCoords(name, fallback) {
+    for (const key of Object.keys(locationCoords)) {
+      if (name && name.toLowerCase().includes(key.toLowerCase()))
+        return locationCoords[key];
+    }
+    return fallback || [24.5854, 73.7125];
+  }
 
-  // Rides from Flask
+  // ── Map init ──────────────────────────────────────────────────────────────
+  const map = L.map('map', { zoomControl: true }).setView([24.5854, 73.7125], 11);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+    maxZoom: 18,
+  }).addTo(map);
+
+  // ── Custom marker icon factory ────────────────────────────────────────────
+  function makeMarkerIcon(type) {
+    // type: 'driver' | 'passenger'
+    const colorClass = type === 'driver' ? 'marker-driver' : 'marker-passenger';
+    const emoji = type === 'driver' ? '🚗' : '🙋';
+    return L.divIcon({
+      className: '',
+      html: `<div class="map-marker ${colorClass}"><span class="map-marker-inner">${emoji}</span></div>`,
+      iconSize:   [36, 36],
+      iconAnchor: [18, 36],
+      popupAnchor:[0, -38],
+    });
+  }
+
+  // ── MarkerCluster group ───────────────────────────────────────────────────
+  const clusterGroup = L.markerClusterGroup({
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    maxClusterRadius: 60,
+  });
+
+  // ── Route control (one at a time) ─────────────────────────────────────────
+  let activeRouteControl = null;
+  let activeMarker = null;
+
+  function clearRoute() {
+    if (activeRouteControl) { map.removeControl(activeRouteControl); activeRouteControl = null; }
+  }
+
+  function drawRoute(startCoords, endCoords, color) {
+    clearRoute();
+    activeRouteControl = L.Routing.control({
+      waypoints: [L.latLng(...startCoords), L.latLng(...endCoords)],
+      lineOptions: {
+        styles: [{ color, opacity: 0.85, weight: 6 }],
+        extendToWaypoints: true,
+        missingRouteTolerance: 1,
+      },
+      createMarker: () => null,       // suppress default markers
+      addWaypoints: false,
+      draggableWaypoints: false,
+      fitSelectedRoutes: true,
+      show: false,                    // no instruction panel
+    }).addTo(map);
+  }
+
+  // ── Ride data from Flask ──────────────────────────────────────────────────
   const rides = {{ rides|tojson }};
 
   rides.forEach(ride => {
-      // 1. Get Start/End Coordinates
-      let startCoords = locationMap['Udaipur']; // Default
-      let endCoords = locationMap['SPSU'];      // Default
+    const startCoords = resolveCoords(ride.origin);
+    const endCoords   = resolveCoords(ride.destination);
 
-      // Simple name matching
-      Object.keys(locationMap).forEach(key => {
-          if (ride.origin.toLowerCase().includes(key.toLowerCase())) startCoords = locationMap[key];
-          if (ride.destination.toLowerCase().includes(key.toLowerCase())) endCoords = locationMap[key];
-      });
+    // For now all rides from Flask backend are "offered" rides (drivers)
+    // Extend this when you add "looking for ride" feature
+    const type  = 'driver';
+    const color = type === 'driver' ? '#10b981' : '#ec4899';
+    const icon  = makeMarkerIcon(type);
 
-      // 2. Add Marker
-      const marker = L.marker(startCoords, {icon: carIcon}).addTo(map);
+    // Parse departure time
+    const depTime = ride.departure_time
+      ? new Date(ride.departure_time).toLocaleString('en-IN', {
+          day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true
+        })
+      : 'TBD';
 
-      // 3. Add Click Event to Draw Route
-      marker.on('click', function() {
-          // Remove previous route if exists
-          if (currentRouteControl) {
-              map.removeControl(currentRouteControl);
-          }
+    // Build popup HTML
+    const popupHtml = `
+      <div class="ride-popup">
+        <div class="popup-header">
+          <span class="popup-type-badge popup-type-driver">🚗 Offering Ride</span>
+        </div>
+        <div class="popup-route">${ride.origin} → ${ride.destination}</div>
+        <div class="popup-detail">🕐 <strong>Departure:</strong> ${depTime}</div>
+        <div class="popup-detail">💺 <strong>Seats Left:</strong> ${ride.seats_available}</div>
+        <div class="popup-detail">👤 <strong>Driver:</strong> ${ride.driver.name}</div>
+        <div class="popup-detail">💰 <strong>Fare:</strong> Discuss with driver</div>
+        <div class="popup-actions">
+          <button class="popup-btn" onclick="showRouteFor(${ride.seats_available}, [${startCoords}], [${endCoords}], '${color}')">
+            🗺️ Show Route
+          </button>
+          <button class="popup-btn-action" onclick="mapRequestRide(${ride.id})">
+            ✋ Request This Ride
+          </button>
+        </div>
+      </div>`;
 
-          // Create new route
-          currentRouteControl = L.Routing.control({
-              waypoints: [
-                  L.latLng(startCoords[0], startCoords[1]),
-                  L.latLng(endCoords[0], endCoords[1])
-              ],
-              lineOptions: {
-                  styles: [{color: '#6366f1', opacity: 0.8, weight: 6}] // Nice Indigo Line
-              },
-              createMarker: function() { return null; }, // Don't create extra markers
-              addWaypoints: false,
-              draggableWaypoints: false,
-              fitSelectedRoutes: true
-          }).addTo(map);
+    const marker = L.marker(startCoords, { icon })
+      .bindPopup(popupHtml, { maxWidth: 280, className: 'ride-popup-wrapper' });
 
-          // Add a popup info
-          marker.bindPopup(`
-              <b>${ride.driver.name}</b><br>
-              Going to: ${ride.destination}
-          `).openPopup();
-      });
+    // Route on popup open
+    marker.on('popupopen', () => {
+      drawRoute(startCoords, endCoords, color);
+    });
+    marker.on('popupclose', () => {
+      clearRoute();
+    });
+
+    // Also add a destination marker (dimmed pin)
+    const destMarker = L.circleMarker(endCoords, {
+      radius: 8, color: '#fff', weight: 2,
+      fillColor: color, fillOpacity: 0.8,
+    }).bindTooltip(`Destination: ${ride.destination}`, { permanent: false });
+
+    clusterGroup.addLayer(marker);
+    clusterGroup.addLayer(destMarker);
   });
+
+  // ── Global helpers called from popup buttons ───────────────────────────────
+  function showRouteFor(seats, start, end, color) {
+    drawRoute(start, end, color);
+  }
+
+  function mapRequestRide(rideId) {
+    if (!confirm('Request this ride? The driver will need to accept before you can chat.')) return;
+    fetch(`/request-ride/${rideId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ Ride requested! Go to Dashboard to track your request status and chat once accepted.');
+          window.location.href = '/dashboard';
+        } else {
+          alert(data.error || 'Failed to request ride. You may need to log in first.');
+          if (data.error && data.error.includes('Not logged')) {
+            window.location.href = '/login';
+          }
+        }
+      })
+      .catch(() => {
+        alert('Error — please make sure you are logged in.');
+        window.location.href = '/login';
+      });
+  }
+
+  map.addLayer(clusterGroup);
+
+  // Click on map clears route
+  map.on('click', clearRoute);
+
+  // ── Fit map to markers if any ─────────────────────────────────────────────
+  if (rides.length > 0) {
+    try { map.fitBounds(clusterGroup.getBounds().pad(0.2)); } catch(e) {}
+  }
 </script>
 {% endblock %}

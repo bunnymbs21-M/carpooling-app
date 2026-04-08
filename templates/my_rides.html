@@ -1,116 +1,142 @@
 {% extends "base.html" %}
-
 {% block title %}My Rides - UniHop{% endblock %}
-
 {% block content %}
-<div class="container">
-    <h2>My Rides</h2>
-    
-    <section class="rides-section">
-        <h3>Rides I'm Offering</h3>
-        {% if offered_rides %}
-            <div class="rides-list">
-                {% for ride in offered_rides %}
-                    <div class="ride-card-full">
-                        <div class="ride-header">
-                            <h4>{{ ride.origin }} → {{ ride.destination }}</h4>
-                            <span class="badge badge-{{ ride.status }}">{{ ride.status }}</span>
-                        </div>
-                        <div class="ride-details">
-                            <p><strong>Departure:</strong> {{ ride.departure_time.strftime('%d %b, %I:%M %p') }}</p>
-                            <p><strong>Seats Available:</strong> {{ ride.seats_available }}</p>
-                        </div>
-                        
-                        <div class="ride-actions" style="margin-top: 1rem;">
-                            <a href="{{ url_for('chat', ride_id=ride.id) }}" class="btn btn-primary btn-small">
-                                💬 Open Chat
-                            </a>
-                        </div>
-                        
-                        {% if ride.requests %}
-                            <div class="ride-requests">
-                                <h5>Ride Requests ({{ ride.requests|length }})</h5>
-                                {% for req in ride.requests %}
-                                    <div class="request-item">
-                                        <div class="request-info">
-                                            <strong>{{ req.passenger.name }}</strong>
-                                            <span class="badge badge-{{ req.status }}">{{ req.status }}</span>
-                                        </div>
-                                        {% if req.status == 'pending' %}
-                                            <button class="btn btn-small btn-primary" onclick="acceptRequest({{ req.id }})">
-                                                Accept
-                                            </button>
-                                        {% endif %}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <p class="text-muted">No requests yet</p>
-                        {% endif %}
-                    </div>
-                {% endfor %}
+<div class="page-wrapper">
+  <h2 class="page-title">My Rides</h2>
+
+  <!-- Rides I'm Offering -->
+  <section class="rides-section">
+    <div class="section-label">
+      <i class="fa-solid fa-steering-wheel"></i> Rides I'm Offering
+    </div>
+
+    {% if offered_rides %}
+    <div class="rides-list">
+      {% for ride in offered_rides %}
+      <div class="ride-card-full">
+        <div class="ride-header">
+          <h4>
+            {{ ride.origin }}
+            <span class="route-arrow"> → </span>
+            {{ ride.destination }}
+          </h4>
+          <span class="badge badge-{{ ride.status }}">{{ ride.status }}</span>
+        </div>
+        <div class="ride-details">
+          <p><strong><i class="fa-solid fa-clock"></i> Departure:</strong> {{ ride.departure_time.strftime('%d %b, %I:%M %p') }}</p>
+          <p><strong><i class="fa-solid fa-chair"></i> Seats Available:</strong> {{ ride.seats_available }}</p>
+        </div>
+        <div class="ride-actions" style="margin-top: 1rem;">
+          <a href="{{ url_for('chat', ride_id=ride.id) }}" class="btn btn-primary btn-small">
+            💬 Open Chat
+          </a>
+        </div>
+
+        {% if ride.requests %}
+        <div class="ride-requests">
+          <h5><i class="fa-solid fa-users"></i> Ride Requests ({{ ride.requests|length }})</h5>
+          {% for req in ride.requests %}
+          <div class="request-item">
+            <div class="request-info">
+              <strong>{{ req.passenger.name }}</strong>
+              <span class="badge badge-{{ req.status }}">{{ req.status }}</span>
             </div>
-        {% else %}
-            <p class="empty-state">You haven't offered any rides yet.</p>
-        {% endif %}
-    </section>
-    
-    <section class="rides-section">
-        <h3>Rides I've Requested</h3>
-        {% if requested_rides %}
-            <div class="rides-list">
-                {% for req in requested_rides %}
-                    <div class="ride-card-full">
-                        <div class="ride-header">
-                            <h4>{{ req.ride.origin }} → {{ req.ride.destination }}</h4>
-                            <span class="badge badge-{{ req.status }}">{{ req.status }}</span>
-                        </div>
-                        <div class="ride-details">
-                            <p><strong>Driver:</strong> {{ req.ride.driver.name }}</p>
-                            <p><strong>Phone:</strong> {{ req.ride.driver.phone }}</p>
-                            <p><strong>Departure:</strong> {{ req.ride.departure_time.strftime('%d %b, %I:%M %p') }}</p>
-                        </div>
-                        {% if req.status == 'accepted' %}
-                        <div class="ride-actions" style="margin-top: 1rem;">
-                            <a href="{{ url_for('chat', ride_id=req.ride.id) }}" class="btn btn-primary btn-small">
-                                💬 Open Chat
-                            </a>
-                        </div>
-                        {% endif %}
-                    </div>
-                {% endfor %}
+            {% if req.status == 'pending' %}
+            <div class="action-buttons">
+              <button class="btn btn-small btn-primary" onclick="acceptRequest({{ req.id }})">
+                <i class="fa-solid fa-check"></i> Accept
+              </button>
+              <button class="btn btn-small btn-danger" onclick="rejectRequest({{ req.id }})">
+                <i class="fa-solid fa-xmark"></i> Reject
+              </button>
             </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
         {% else %}
-            <p class="empty-state">You haven't requested any rides yet.</p>
+        <p class="text-muted" style="margin-top: 15px;">No requests yet</p>
         {% endif %}
-    </section>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">🚗</div>
+      <p>You haven't offered any rides yet.</p>
+      <a href="{{ url_for('offer_ride') }}" class="btn btn-primary">
+        <i class="fa-solid fa-plus"></i> Offer a Ride
+      </a>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Rides I've Requested -->
+  <section class="rides-section">
+    <div class="section-label">
+      <i class="fa-solid fa-ticket"></i> Rides I've Requested
+    </div>
+
+    {% if requested_rides %}
+    <div class="rides-list">
+      {% for req in requested_rides %}
+      <div class="ride-card-full">
+        <div class="ride-header">
+          <h4>
+            {{ req.ride.origin }}
+            <span class="route-arrow"> → </span>
+            {{ req.ride.destination }}
+          </h4>
+          <span class="badge badge-{{ req.status }}">{{ req.status }}</span>
+        </div>
+        <div class="ride-details">
+          <p><strong><i class="fa-solid fa-user"></i> Driver:</strong> {{ req.ride.driver.name }}</p>
+          <p><strong><i class="fa-solid fa-phone"></i> Phone:</strong> {{ req.ride.driver.phone }}</p>
+          <p><strong><i class="fa-solid fa-clock"></i> Departure:</strong> {{ req.ride.departure_time.strftime('%d %b, %I:%M %p') }}</p>
+        </div>
+        {% if req.status == 'accepted' %}
+        <div class="ride-actions" style="margin-top: 1rem;">
+          <a href="{{ url_for('chat', ride_id=req.ride.id) }}" class="btn btn-primary btn-small">
+            💬 Open Chat
+          </a>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">🔍</div>
+      <p>You haven't requested any rides yet.</p>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+        <i class="fa-solid fa-search"></i> Find Rides
+      </a>
+    </div>
+    {% endif %}
+  </section>
 </div>
 
 <script>
-function acceptRequest(requestId) {
-    if (!confirm('Accept this ride request?')) {
-        return;
-    }
-    
-    fetch(`/accept-request/${requestId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Request accepted!');
-            location.reload();
-        } else {
-            alert(data.error || 'Failed to accept request');
-        }
-    })
-    .catch(error => {
-        alert('Error accepting request');
-        console.error(error);
-    });
-}
+  function acceptRequest(requestId) {
+    if (!confirm('Accept this ride request?')) return;
+    fetch(`/accept-request/${requestId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) { alert('Request accepted!'); location.reload(); }
+        else alert(data.error || 'Failed to accept request');
+      })
+      .catch(() => alert('Error accepting request'));
+  }
+
+  function rejectRequest(requestId) {
+    if (!confirm('Are you sure you want to REJECT this passenger?')) return;
+    fetch(`/reject-request/${requestId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) { alert('Request rejected.'); location.reload(); }
+        else alert(data.error || 'Failed to reject request');
+      })
+      .catch(() => alert('Error rejecting request'));
+  }
 </script>
 {% endblock %}

@@ -1,114 +1,173 @@
-{% extends "base.html" %} {% block title %}Dashboard - CarpoolHub{% endblock %}
+{% extends "base.html" %}
+{% block title %}Dashboard - UniHop{% endblock %}
 {% block content %}
-<div class="container">
+<div class="page-wrapper">
   <div class="dashboard-header">
     <h2>Available Rides</h2>
-    <a href="{{ url_for('offer_ride') }}" class="btn btn-primary"
-      >Offer a Ride</a
-    >
+    <a href="{{ url_for('offer_ride') }}" class="btn btn-primary">
+      <i class="fa-solid fa-plus"></i> Offer a Ride
+    </a>
   </div>
 
   {% if rides %}
   <div class="rides-grid">
     {% for ride in rides %}
-    <div class="ride-card">
+
+    {# -- Determine this user's relationship to this ride -- #}
+    {% set is_my_ride = (ride.id in my_ride_ids) %}
+    {% if ride.id in user_requests %}
+      {% set my_status = user_requests[ride.id] %}
+    {% else %}
+      {% set my_status = '' %}
+    {% endif %}
+
+    <div class="ride-card {% if is_my_ride %}ride-card--mine{% endif %}">
       <div class="ride-header">
-        <h3>{{ ride.origin }} → {{ ride.destination }}</h3>
+        <h3>{{ ride.origin }} <span class="route-arrow">→</span> {{ ride.destination }}</h3>
+        {% if is_my_ride %}
+          <span class="ride-owner-tag">Your Ride</span>
+        {% endif %}
       </div>
+
       <div class="ride-details">
-        <p><strong>Driver:</strong> {{ ride.driver.name }}</p>
-        <p><strong>Phone:</strong> {{ ride.driver.phone }}</p>
-        <p>
-          <strong>Departure:</strong> {{ ride.departure_time.strftime('%d %b,
-          %I:%M %p') }}
-        </p>
-        <p><strong>Seats Available:</strong> {{ ride.seats_available }}</p>
-        <p class="price-note">💰 Discuss fare with driver</p>
+        <p><strong><i class="fa-solid fa-user"></i> Driver:</strong> {{ ride.driver.name }}</p>
+        <p><strong><i class="fa-solid fa-phone"></i> Phone:</strong> {{ ride.driver.phone }}</p>
+        <p><strong><i class="fa-solid fa-clock"></i> Departure:</strong> {{ ride.departure_time.strftime('%d %b, %I:%M %p') }}</p>
+        <p><strong><i class="fa-solid fa-chair"></i> Seats:</strong> {{ ride.seats_available }} available</p>
+        <p class="price-note"><i class="fa-solid fa-coins"></i> Discuss fare with driver</p>
       </div>
+
+      {# ── Smart action area ─────────────────────────────── #}
       <div class="ride-actions">
-        <button
-          class="btn btn-primary btn-small"
-          onclick="requestRide({{ ride.id }})"
-        >
-          Request Ride
-        </button>
-        <button
-          class="btn btn-secondary btn-small"
-          onclick="pingDriver({{ ride.id }})"
-        >
-          📍 Ping Driver
-        </button>
+
+        {% if is_my_ride %}
+          {# Driver sees their own ride — they can open chat to see requests #}
+          <a href="{{ url_for('chat', ride_id=ride.id) }}" class="btn btn-primary btn-small">
+            <i class="fa-solid fa-comments"></i> Open Chat
+          </a>
+
+        {% elif my_status == 'accepted' %}
+          {# Passenger — accepted, can chat #}
+          <a href="{{ url_for('chat', ride_id=ride.id) }}" class="btn btn-chat btn-small">
+            <i class="fa-solid fa-comments"></i> Open Chat
+          </a>
+
+        {% elif my_status == 'pending' %}
+          {# Passenger waiting for driver to accept their ping #}
+          <button class="btn btn-pending btn-small" disabled>
+            <i class="fa-solid fa-hourglass-half"></i> Waiting for driver…
+          </button>
+          <button class="btn btn-ping btn-small" onclick="pingDriver({{ ride.id }}, this)">
+            <i class="fa-solid fa-bell"></i> Ping Again
+          </button>
+
+        {% else %}
+          {# No relationship yet — just ping the driver #}
+          <button
+            id="ping-btn-{{ ride.id }}"
+            class="btn btn-ping btn-small"
+            onclick="pingDriver({{ ride.id }}, this)"
+          >
+            <i class="fa-solid fa-bell"></i> Ping Driver
+          </button>
+
+        {% endif %}
       </div>
+      {# ───────────────────────────────────────────────────── #}
+
     </div>
     {% endfor %}
   </div>
+
   {% else %}
   <div class="empty-state">
+    <div class="empty-state-icon">🚗</div>
     <p>No rides available at the moment. Be the first to offer one!</p>
-    <a href="{{ url_for('offer_ride') }}" class="btn btn-primary"
-      >Offer a Ride</a
-    >
+    <a href="{{ url_for('offer_ride') }}" class="btn btn-primary">
+      <i class="fa-solid fa-plus"></i> Offer a Ride
+    </a>
   </div>
   {% endif %}
 </div>
 
-<script>
-  // At the top of your script block
-  const socket = io();
+<style>
+  /* ── Extra ride-card states ── */
+  .ride-card--mine {
+    border-color: rgba(20, 184, 166, 0.35) !important;
+  }
+  .ride-card--mine::before {
+    background: linear-gradient(to right, var(--neon-teal), var(--neon-green)) !important;
+  }
+  .ride-owner-tag {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--neon-teal);
+    background: rgba(20,184,166,0.12); border: 1px solid rgba(20,184,166,0.3);
+    border-radius: 50px; padding: 3px 10px;
+    white-space: nowrap;
+  }
+  .ride-card .ride-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+  }
+  .ride-card .ride-header h3 { margin-bottom: 0; }
 
-  // Listen for new rides from the server
-  socket.on("new_ride_notification", function (data) {
-    // Alert the user (or add a toast notification)
-    alert(`New Ride Available!\n${data.origin} ➝ ${data.destination}`);
+  /* ── Chat button (green) ── */
+  .btn-chat {
+    background: linear-gradient(45deg, var(--neon-green), var(--neon-teal));
+    color: white;
+    box-shadow: 0 0 14px rgba(16,185,129,0.3);
+  }
+  .btn-chat:hover { transform: translateY(-2px); box-shadow: 0 0 22px rgba(16,185,129,0.55); }
 
-    // Refresh the page to show the new ride (Simplest way for now)
-    location.reload();
-  });
-  function requestRide(rideId) {
-    if (!confirm("Do you want to request this ride?")) {
-      return;
-    }
-
-    fetch(`/request-ride/${rideId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          alert("Ride requested successfully!");
-          location.reload();
-        } else {
-          alert(data.error || "Failed to request ride");
-        }
-      })
-      .catch((error) => {
-        alert("Error requesting ride");
-        console.error(error);
-      });
+  /* ── Pending button (amber, disabled) ── */
+  .btn-pending {
+    background: rgba(245,158,11,0.15);
+    color: var(--neon-yellow);
+    border: 1px solid rgba(245,158,11,0.4);
+    cursor: default; opacity: 0.85;
   }
 
-  function pingDriver(rideId) {
+  .ride-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+</style>
+
+<script>
+  socket.on("new_ride_notification", function(data) {
+    location.reload();
+  });
+
+  function pingDriver(rideId, btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Pinging…';
+    }
+
     fetch(`/ping-driver/${rideId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
     })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          alert("Driver has been pinged! 📍");
-        } else {
-          alert(data.error || "Failed to ping driver");
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-check"></i> Pinged! Waiting…';
+          btn.style.opacity = '0.6';
+          btn.disabled = true;
         }
-      })
-      .catch((error) => {
-        alert("Error pinging driver");
-        console.error(error);
-      });
+        showToast({
+          type: 'info',
+          title: '📍 Driver Pinged!',
+          body: 'Your ping was sent. The driver will get a notification and can accept your request. You\'ll be notified instantly.',
+          autoDismiss: 5000
+        });
+      } else {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bell"></i> Ping Driver'; }
+        alert(data.error || 'Failed to ping driver');
+      }
+    })
+    .catch(() => {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bell"></i> Ping Driver'; }
+      alert('Error — please try again');
+    });
   }
 </script>
 {% endblock %}

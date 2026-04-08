@@ -1,68 +1,158 @@
-{% extends "base.html" %}
+    {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+<div class="background-shapes">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+</div>
+
 <div class="hero">
-    <div class="container">
-        <h1>Welcome to UniHop</h1>
-        <p class="subtitle">Share rides, save money, and make friends on campus!</p>
-        <div class="hero-buttons">
-            <a href="{{ url_for('signup') }}" class="btn btn-primary btn-large">Get Started</a>
-            <a href="{{ url_for('login') }}" class="btn btn-secondary btn-large">Login</a>
+    <div class="container hero-content">
+        <h1 class="animate-text">Welcome to <span class="brand-gradient">UniHop</span></h1>
+        <p class="subtitle animate-text delay-1">Share rides, save money, and make friends on campus!</p>
+        <div class="hero-buttons animate-text delay-2">
+            <a href="{{ url_for('signup') }}" class="btn btn-primary">Get Started <i class="fas fa-arrow-right"></i></a>
+            <a href="{{ url_for('login') }}" class="btn btn-secondary">Login <i class="fas fa-user"></i></a>
         </div>
     </div>
 </div>
 
-<div class="container">
+<div class="container main-wrapper">
+    <section class="stats-section hidden">
+        <div class="stat-item">
+            <h2 class="counter" data-target="1500">0</h2>
+            <p>Rides Shared</p>
+        </div>
+        <div class="stat-item">
+            <h2 class="counter" data-target="5000">0</h2>
+            <p>Dollars Saved</p>
+        </div>
+        <div class="stat-item">
+            <h2 class="counter" data-target="850">0</h2>
+            <p>Happy Students</p>
+        </div>
+    </section>
+
     <section class="features">
-        <h2>Why Choose UniHop?</h2>
+        <h2 class="section-title hidden">Why Choose UniHop?</h2>
         <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-icon">🚗</div>
+            <div class="feature-card hidden">
+                <div class="icon-box color-1"><i class="fas fa-car-side"></i></div>
                 <h3>Easy Ride Sharing</h3>
-                <p>Offer or request rides with just a few clicks</p>
+                <p>Offer or request rides instantly. Skip the bus, hop in a car.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">💰</div>
+            <div class="feature-card hidden">
+                <div class="icon-box color-2"><i class="fas fa-piggy-bank"></i></div>
                 <h3>Save Money</h3>
-                <p>Split fuel costs and reduce your transportation expenses</p>
+                <p>Split fuel costs drastically. More money for coffee and books.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">🗺️</div>
+            <div class="feature-card hidden">
+                <div class="icon-box color-3"><i class="fas fa-map-marked-alt"></i></div>
                 <h3>Campus Map</h3>
-                <p>View all available rides on an interactive map</p>
+                <p>Live interactive map showing rides departing from your dorm.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">👥</div>
+            <div class="feature-card hidden">
+                <div class="icon-box color-4"><i class="fas fa-users"></i></div>
                 <h3>Student Community</h3>
-                <p>Connect with fellow students and make new friends</p>
+                <p>Verified student-only platform. Safe, social, and secure.</p>
             </div>
         </div>
     </section>
 
     <section class="how-it-works">
-        <h2>How It Works</h2>
-        <div class="steps">
-            <div class="step">
-                <div class="step-number">1</div>
+        <h2 class="section-title hidden">How It Works</h2>
+        <div class="steps-container">
+            <div class="step-card hidden">
+                <div class="step-badge">1</div>
                 <h3>Create Account</h3>
-                <p>Sign up with your student email</p>
+                <p>Sign up with your .edu email</p>
             </div>
-            <div class="step">
-                <div class="step-number">2</div>
+            <div class="connector hidden"></div>
+            <div class="step-card hidden">
+                <div class="step-badge">2</div>
                 <h3>Offer or Request</h3>
-                <p>Post a ride or find available rides</p>
+                <p>Post your route details</p>
             </div>
-            <div class="step">
-                <div class="step-number">3</div>
+            <div class="connector hidden"></div>
+            <div class="step-card hidden">
+                <div class="step-badge">3</div>
                 <h3>Connect</h3>
-                <p>Match with other students and coordinate</p>
+                <p>Chat & coordinate pickup</p>
             </div>
-            <div class="step">
-                <div class="step-number">4</div>
+            <div class="connector hidden"></div>
+            <div class="step-card hidden">
+                <div class="step-badge">4</div>
                 <h3>Share the Ride</h3>
-                <p>Travel together and split costs</p>
+                <p>Travel & split the fare</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials">
+        <h2 class="section-title hidden">What Students Say</h2>
+        <div class="testimonial-grid hidden">
+            <div class="testimonial-card">
+                <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                <p>"UniHop saved me so much money on my weekend trips home. Plus, I met my new study buddy on a ride!"</p>
+                <h4>— Sarah J., Sophomore</h4>
+            </div>
+            <div class="testimonial-card">
+                <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                <p>"As a commuter, finding parking was a nightmare. Now I just ride-share with someone who already has a spot."</p>
+                <h4>— Marcus T., Senior</h4>
             </div>
         </div>
     </section>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Scroll Reveal Animation
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('show');
+                
+                // If it hits the stats section, start counting!
+                if(entry.target.classList.contains('stats-section')) {
+                    startCounters();
+                }
+            }
+        });
+    });
+
+    const hiddenElements = document.querySelectorAll('.hidden');
+    hiddenElements.forEach((el) => observer.observe(el));
+
+    // 2. Number Counter Animation
+    let counted = false;
+    function startCounters() {
+        if(counted) return;
+        counted = true;
+
+        const counters = document.querySelectorAll('.counter');
+        const speed = 200; 
+
+        counters.forEach(counter => {
+            const updateCount = () => {
+                const target = +counter.getAttribute('data-target');
+                const count = +counter.innerText;
+                const inc = target / speed;
+
+                if (count < target) {
+                    counter.innerText = Math.ceil(count + inc);
+                    setTimeout(updateCount, 20);
+                } else {
+                    counter.innerText = target + "+";
+                }
+            };
+            updateCount();
+        });
+    }
+});
+</script>
 {% endblock %}
