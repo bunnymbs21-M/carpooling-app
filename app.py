@@ -1,6 +1,16 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+
+from flask import (
+    Flask,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 # Make sure your models.py file is in the same folder!
@@ -20,6 +30,7 @@ with app.app_context():
 
 
 # --- AUTHENTICATION ROUTES ---
+
 
 @app.route("/")
 def index():
@@ -80,6 +91,7 @@ def logout():
 
 # --- CORE APP ROUTES ---
 
+
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
@@ -90,8 +102,7 @@ def dashboard():
     # FILTER: Only show rides that are available AND in the future
     rides = (
         Ride.query.filter(
-            Ride.status == "available",
-            Ride.departure_time > datetime.now()
+            Ride.status == "available", Ride.departure_time > datetime.now()
         )
         .order_by(Ride.departure_time.asc())
         .all()
@@ -104,7 +115,7 @@ def dashboard():
     user_requests = {}
     my_reqs = RideRequest.query.filter_by(passenger_id=current_user_id).all()
     for req in my_reqs:
-        user_requests[req.ride_id] = req.status   # 'pending', 'accepted', 'rejected'
+        user_requests[req.ride_id] = req.status  # 'pending', 'accepted', 'rejected'
 
     return render_template(
         "dashboard.html",
@@ -146,12 +157,12 @@ def offer_ride():
             "origin": new_ride.origin,
             "destination": new_ride.destination,
             "date": new_ride.departure_time.strftime("%d %b"),  # e.g., 12 Feb
-            "time": new_ride.departure_time.strftime("%I:%M %p"), # e.g., 02:30 PM
+            "time": new_ride.departure_time.strftime("%I:%M %p"),  # e.g., 02:30 PM
             "seats": new_ride.seats_available,
             "driver_name": session["user_name"],
-            "driver_id": session["user_id"]
+            "driver_id": session["user_id"],
         }
-        
+
         # Broadcast this payload to the 'new_ride_notification' channel
         socketio.emit("new_ride_notification", ride_payload)
         # --- LIVE FEED LOGIC END ---
@@ -231,6 +242,8 @@ def accept_request(request_id):
     db.session.commit()
 
     return jsonify({"success": "Request accepted"})
+
+
 @app.route("/reject-request/<int:request_id>", methods=["POST"])
 def reject_request(request_id):
     if "user_id" not in session:
@@ -245,17 +258,18 @@ def reject_request(request_id):
 
     # 1. Update status to 'rejected'
     ride_request.status = "rejected"
-    
+
     # 2. Send the "Sorry" message to the passenger automatically
     rejection_msg = Message(
         ride_id=ride.id,
         sender_id=session["user_id"],
-        message=f"❌ Request Rejected: Sorry {ride_request.passenger.name}, I cannot take you on this ride."
+        message=f"❌ Request Rejected: Sorry {ride_request.passenger.name}, I cannot take you on this ride.",
     )
     db.session.add(rejection_msg)
     db.session.commit()
 
     return jsonify({"success": "Request rejected and user notified."})
+
 
 @app.route("/map")
 def map_view():
@@ -264,23 +278,26 @@ def map_view():
 
     # FILTER: Only map future rides
     rides_objects = Ride.query.filter(
-        Ride.status == "available", 
-        Ride.departure_time > datetime.now()
+        Ride.status == "available", Ride.departure_time > datetime.now()
     ).all()
-    
+
     rides_data = []
     for ride in rides_objects:
-        rides_data.append({
-            "origin": ride.origin,
-            "destination": ride.destination,
-            "driver": {"name": ride.driver.name},
-            "departure_time": ride.departure_time.isoformat(),
-            "seats_available": ride.seats_available,
-        })
+        rides_data.append(
+            {
+                "origin": ride.origin,
+                "destination": ride.destination,
+                "driver": {"name": ride.driver.name},
+                "departure_time": ride.departure_time.isoformat(),
+                "seats_available": ride.seats_available,
+            }
+        )
 
     return render_template("map.html", rides=rides_data)
 
+
 # --- CHAT & REAL-TIME ROUTES ---
+
 
 @app.route("/chat/<int:ride_id>")
 def chat(ride_id):
@@ -460,7 +477,9 @@ def accept_ping(request_id):
 
     return jsonify({"success": True, "ride_id": ride.id})
 
+
 # --- SOCKET.IO EVENTS ---
+
 
 @socketio.on("join_user_room")
 def handle_join_user_room(data):
@@ -516,4 +535,4 @@ def handle_send_message(data):
 
 
 if __name__ == "__main__":
-    socketio.run(app,host="0.0.0.0",port="5000", debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
