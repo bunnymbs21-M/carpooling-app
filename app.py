@@ -535,4 +535,10 @@ def handle_send_message(data):
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    print(f"\n🚀 UniHop Server is running!")
+    print(f"   → Local: http://127.0.0.1:{port}")
+    print(f"   → Network: http://0.0.0.0:{port} (for other devices)")
+    print("   Press CTRL+C to stop\n")
+
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)
